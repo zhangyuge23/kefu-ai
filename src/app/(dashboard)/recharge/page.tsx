@@ -1,7 +1,6 @@
 'use client';
 
 import TopBar from '@/components/layout/TopBar';
-import RechargePanel from '@/components/pay/RechargePanel';
 import CDKeyRedeem from '@/components/CDKeyRedeem';
 import { useCredits } from '@/hooks/useCredits';
 
@@ -22,13 +21,19 @@ export default function RechargePage() {
           </div>
         </div>
 
-        {/* 充值面板 */}
-        <div className="card p-6">
-          <RechargePanel />
-        </div>
-
         {/* CDKey 兑换 */}
         <CDKeyRedeem onSuccess={refresh} />
+
+        {/* 使用说明 */}
+        <div className="card p-6">
+          <h3 className="font-medium text-slate-700 mb-3">使用说明</h3>
+          <ul className="text-sm text-slate-600 space-y-2">
+            <li>• 通过购买 CDKey 兑换码获得算力</li>
+            <li>• 输入兑换码即可充值到您的账户</li>
+            <li>• 算力可用于数字人视频生成</li>
+            <li>• 如有问题，请联系客服</li>
+          </ul>
+        </div>
       </div>
     </>
   );

@@ -10,22 +10,6 @@ export function useCredits() {
 
   useEffect(() => {
     loadCredits();
-
-    // 实时监听余额变化
-    const channel = supabase
-      .channel('credits-realtime')
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'profiles',
-      }, (payload) => {
-        if (payload.new && 'credits' in payload.new) {
-          setCredits((payload.new as any).credits);
-        }
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
   }, []);
 
   async function loadCredits() {
