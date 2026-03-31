@@ -1,9 +1,11 @@
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
+import { useCredits } from '@/hooks/useCredits';
 
 export default function TopBar({ title, breadcrumb }: { title: string; breadcrumb?: string }) {
   const { profile, signOut } = useAuth();
+  const { credits } = useCredits();
   const today = new Date().toLocaleDateString('zh-CN', {
     year: 'numeric', month: 'long', day: 'numeric', weekday: 'long',
   });
@@ -18,8 +20,14 @@ export default function TopBar({ title, breadcrumb }: { title: string; breadcrum
         <h1 className="text-lg font-semibold text-slate-800 -mt-0.5">{title}</h1>
       </div>
 
-      {/* Right: Date + User */}
+      {/* Right: Date + User + Credits */}
       <div className="flex items-center gap-6">
+        {/* 算力余额显示 */}
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-brand-50 rounded-full">
+          <span className="text-xs text-brand-600">算力</span>
+          <span className="text-sm font-bold text-brand-600">{credits.toLocaleString()}</span>
+        </div>
+
         <span className="text-sm text-slate-400 hidden sm:block">{today}</span>
 
         <div className="flex items-center gap-3">

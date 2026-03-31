@@ -23,13 +23,19 @@ export default function CDKeyRedeem({ onSuccess }: { onSuccess?: () => void }) {
       if (res.ok) {
         setMessage({ type: 'success', text: `兑换成功！获得 ${data.credits} 点算力` });
         setCode('');
-        onSuccess?.();
+        
+        // 延迟刷新，确保后端数据已保存
+        setTimeout(() => {
+          onSuccess?.();
+          // 强制刷新页面以确保所有地方都显示最新数据
+          window.location.reload();
+        }, 500);
       } else {
         setMessage({ type: 'error', text: data.error || '兑换失败' });
+        setLoading(false);
       }
     } catch {
       setMessage({ type: 'error', text: '网络错误，请重试' });
-    } finally {
       setLoading(false);
     }
   }
