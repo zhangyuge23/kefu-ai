@@ -47,7 +47,7 @@ export default function AdminDashboard() {
       // 获取CDKey统计
       const { count: cdkeyCount, data: cdkeyData } = await supabase
         .from('cdkeys')
-        .select('id', { count: 'exact' });
+        .select('*', { count: 'exact' });
       
       const unusedCdkeys = cdkeyData?.filter(c => !c.redeemed_by).length || 0;
       const usedCdkeys = cdkeyData?.filter(c => c.redeemed_by).length || 0;
