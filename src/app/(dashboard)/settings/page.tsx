@@ -1,16 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import TopBar from '@/components/layout/TopBar';
 import { useAuth } from '@/hooks/useAuth';
 import { createBrowserClient } from '@/lib/supabase/client';
 
 export default function SettingsPage() {
-  const { profile, refreshProfile } = useAuth();
-  const [nickname, setNickname] = useState(profile?.nickname || '');
+  const { profile, refreshProfile, loading: authLoading } = useAuth();
+  const [nickname, setNickname] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const supabase = createBrowserClient();
+
+  useEffect(() => {
+    if (profile?.nickname) {
+      setNickname(profile.nickname);
+    }
+  }, [profile]);
 
   async function handleSave() {
     if (!profile) return;
@@ -29,6 +35,32 @@ export default function SettingsPage() {
       refreshProfile();
     }
     setSaving(false);
+  }
+
+  if (authLoading) {
+    return (
+      <>
+        <TopBar title="账号设置" breadcrumb="设置" />
+        <div className="p-8 max-w-lg space-y-6">
+          <div className="card p-6 space-y-5 animate-pulse">
+            <div className="h-6 bg-slate-200 rounded w-32"></div>
+            <div className="space-y-3">
+              <div className="h-10 bg-slate-200 rounded"></div>
+              <div className="h-10 bg-slate-200 rounded"></div>
+              <div className="h-10 bg-slate-200 rounded w-24"></div>
+            </div>
+          </div>
+          <div className="card p-6 space-y-3 animate-pulse">
+            <div className="h-6 bg-slate-200 rounded w-24"></div>
+            <div className="space-y-2">
+              <div className="h-4 bg-slate-200 rounded w-full"></div>
+              <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+              <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
   }
 
   return (
