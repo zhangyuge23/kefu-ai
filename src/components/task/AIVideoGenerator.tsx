@@ -160,20 +160,69 @@ export default function AIVideoGenerator({ onTaskCreated }: AIVideoGeneratorProp
       let payload;
       try {
         payload = JSON.parse(rawText);
+        console.log('✅ n8n 响应 (原始):', rawText);
+        console.log('✅ n8n 响应 (解析后):', payload);
       } catch {
         payload = rawText;
+        console.error('❌ n8n 响应不是有效 JSON:', rawText);
       }
 
       // 兼容多种格式提取 taskId
-      const extractedTaskId = 
-        payload?.data?.id || 
-        payload?.data?.task_id || 
-        payload?.task_id || 
-        payload?.id ||
-        (Array.isArray(payload) ? payload[0]?.id : null);
+      let extractedTaskId = null;
+
+      // 格式1: { data: { id: "xxx" } } - 直接对象
+      if (!extractedTaskId && payload?.data?.id) {
+        extractedTaskId = payload.data.id;
+        console.log('✅ 提取方式1 (payload.data.id):', extractedTaskId);
+      }
+
+      // 格式2: { data: { task_id: "xxx" } }
+      if (!extractedTaskId && payload?.data?.task_id) {
+        extractedTaskId = payload.data.task_id;
+        console.log('✅ 提取方式2 (payload.data.task_id):', extractedTaskId);
+      }
+
+      // 格式3: { id: "xxx" } - 扁平结构
+      if (!extractedTaskId && payload?.id) {
+        extractedTaskId = payload.id;
+        console.log('✅ 提取方式3 (payload.id):', extractedTaskId);
+      }
+
+      // 格式4: { task_id: "xxx" } - 扁平结构
+      if (!extractedTaskId && payload?.task_id) {
+        extractedTaskId = payload.task_id;
+        console.log('✅ 提取方式4 (payload.task_id):', extractedTaskId);
+      }
+
+      // 格式5: [{ data: { id: "xxx" } }] - 数组格式
+      if (!extractedTaskId && Array.isArray(payload)) {
+        console.log('📋 检测到数组格式，尝试提取...');
+        if (payload[0]?.data?.id) {
+          extractedTaskId = payload[0].data.id;
+          console.log('✅ 提取方式5 (payload[0].data.id):', extractedTaskId);
+        } else if (payload[0]?.data?.task_id) {
+          extractedTaskId = payload[0].data.task_id;
+          console.log('✅ 提取方式5b (payload[0].data.task_id):', extractedTaskId);
+        } else if (payload[0]?.id) {
+          extractedTaskId = payload[0].id;
+          console.log('✅ 提取方式5c (payload[0].id):', extractedTaskId);
+        }
+      }
+
+      // 格式6: 直接在数组第一个元素的 data 中
+      if (!extractedTaskId && Array.isArray(payload) && payload[0]?.data) {
+        extractedTaskId = payload[0].data;
+        console.log('⚠️ 提取方式6 (payload[0].data 整体):', extractedTaskId);
+      }
 
       if (!extractedTaskId) {
-        console.error('n8n 响应:', payload);
+        console.error('❌ 无法提取 Task ID，响应结构:', {
+          rawText,
+          payload,
+          payloadType: typeof payload,
+          isArray: Array.isArray(payload),
+          keys: payload && typeof payload === 'object' ? Object.keys(payload) : [],
+        });
         throw new Error('接口未返回有效的 Task ID');
       }
 
