@@ -1,62 +1,58 @@
 'use client';
 
 import { useState } from 'react';
-import VideoUploader from './VideoUploader';
+import AIVideoGenerator from './AIVideoGenerator';
+import { useAuth } from '@/hooks/useAuth';
+import { createBrowserClient } from '@/lib/supabase/client';
 
 interface TaskEditModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: {
-    name: string;
-    scriptText: string;
-    sourceVideoUrl: string;
-    sourceVideoDuration: number;
-    sourceVideoThumbnail?: string;
-  }) => Promise<void>;
+  onSuccess?: (taskId: string, videoUrl: string) => void;
 }
 
-export default function TaskEditModal({ open, onClose, onSubmit }: TaskEditModalProps) {
-  const [name, setName] = useState('');
-  const [scriptText, setScriptText] = useState('');
-  const [videoData, setVideoData] = useState<{
-    url: string; duration: number; thumbnail: string;
-  } | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export default function TaskEditModal({ open, onClose, onSuccess }: TaskEditModalProps) {
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [showGenerator, setShowGenerator] = useState(false);
+  const { profile } = useAuth();
+  const supabase = createBrowserClient();
 
   if (!open) return null;
 
-  const canSubmit = name.trim() && scriptText.trim() && videoData && !submitting;
-
-  // 估算生成时间
-  const estimatedMinutes = videoData
-    ? Math.max(3, Math.round(videoData.duration / 10))
-    : 0;
-
-  async function handleSubmit() {
-    if (!canSubmit || !videoData) return;
-    setSubmitting(true);
-    setError(null);
-
+  const handleTaskCreated = async (newTaskId: string) => {
+    setTaskId(newTaskId);
+    
+    // 在数据库创建任务记录
     try {
-      await onSubmit({
-        name: name.trim(),
-        scriptText: scriptText.trim(),
-        sourceVideoUrl: videoData.url,
-        sourceVideoDuration: videoData.duration,
-        sourceVideoThumbnail: videoData.thumbnail,
-      });
-      // 重置表单
-      setName('');
-      setScriptText('');
-      setVideoData(null);
-      onClose();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { error } = await supabase
+        .from('tasks')
+        .insert({
+          user_id: user.id,
+          name: 'AI数字人任务',
+          status: 'pending',
+          script_text: '',
+        });
+      
+      if (error) console.error('创建任务记录失败:', error);
+    } catch (err) {
+      console.error('创建任务记录失败:', err);
     }
-  }
+  };
+
+  const handleSuccess = (videoUrl: string) => {
+    if (taskId && onSuccess) {
+      onSuccess(taskId, videoUrl);
+    }
+    // 重置状态
+    setTimeout(() => {
+      setTaskId(null);
+      setShowGenerator(false);
+      onClose();
+    }, 1000);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -67,11 +63,16 @@ export default function TaskEditModal({ open, onClose, onSubmit }: TaskEditModal
       />
 
       {/* 弹窗 */}
-      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto modal-content">
+      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto modal-content">
         <div className="p-6">
           {/* 标题 */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-slate-800">新建生成任务</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-bold text-slate-800">新建生成任务</h2>
+              <span className="px-2 py-1 text-xs bg-brand-100 text-brand-700 rounded-full">
+                AI 数字人
+              </span>
+            </div>
             <button
               onClick={onClose}
               className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-400 transition-colors"
@@ -80,83 +81,17 @@ export default function TaskEditModal({ open, onClose, onSubmit }: TaskEditModal
             </button>
           </div>
 
-          {/* 表单 */}
-          <div className="space-y-5">
-            {/* 任务名称 */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                任务名称 <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="text"
-                className="input"
-                placeholder="如：2026年Q1电商推广视频"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                maxLength={100}
-              />
-            </div>
-
-            {/* 上传视频 */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                上传视频 <span className="text-red-400">*</span>
-              </label>
-              <VideoUploader
-                onUploadComplete={data => setVideoData(data)}
-              />
-            </div>
-
-            {/* 要说的话 */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                要说的话 <span className="text-red-400">*</span>
-              </label>
-              <textarea
-                className="input min-h-[120px] resize-none"
-                placeholder="输入数字人要说的内容..."
-                value={scriptText}
-                onChange={e => setScriptText(e.target.value)}
-                maxLength={1000}
-              />
-              <div className="flex justify-between mt-1">
-                <span className="text-xs text-slate-400">
-                  {scriptText.length} / 1000 字
-                </span>
-                {estimatedMinutes > 0 && (
-                  <span className="text-xs text-slate-400">
-                    预计生成时间 ~{estimatedMinutes} 分钟
-                  </span>
-                )}
-              </div>
+          {/* 算力提示 */}
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+            <span className="text-amber-500">💡</span>
+            <div className="text-xs text-amber-700">
+              <p className="font-medium">生成数字人视频需要消耗算力</p>
+              <p className="mt-1">当前余额：<span className="font-bold">{profile?.credits ?? 0}</span> 点</p>
             </div>
           </div>
 
-          {/* 错误 */}
-          {error && (
-            <div className="mt-4 p-3 rounded-xl bg-red-50 text-sm text-red-600">
-              {error}
-            </div>
-          )}
-
-          {/* 按钮 */}
-          <div className="flex gap-3 mt-6">
-            <button onClick={onClose} className="btn-secondary flex-1">
-              取消
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={!canSubmit}
-              className="btn-primary flex-1"
-            >
-              {submitting ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  提交中...
-                </span>
-              ) : '提交任务'}
-            </button>
-          </div>
+          {/* AI 视频生成器 */}
+          <AIVideoGenerator onTaskCreated={handleTaskCreated} />
         </div>
       </div>
     </div>

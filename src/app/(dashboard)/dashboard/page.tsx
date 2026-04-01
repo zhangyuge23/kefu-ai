@@ -1,20 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import TopBar from '@/components/layout/TopBar';
 import TaskList from '@/components/task/TaskList';
 import TaskEditModal from '@/components/task/TaskEditModal';
 import { useTasks } from '@/hooks/useTasks';
 
 export default function DashboardPage() {
-  const { tasks, stats, loading, createTask, deleteTask, retryTask } = useTasks();
+  const { tasks, stats: taskStats, loading, createTask, deleteTask, retryTask, startPolling, stopPolling } = useTasks();
   const [showModal, setShowModal] = useState(false);
 
+  // 页面加载时开始轮询，卸载时停止
+  useEffect(() => {
+    startPolling();
+    return () => {
+      stopPolling();
+    };
+  }, [startPolling, stopPolling]);
+
   const STAT_CARDS = [
-    { label: '总任务', value: stats.total, color: 'text-brand-600', bg: 'bg-brand-50', icon: '📊' },
-    { label: '处理中', value: stats.processing, color: 'text-amber-600', bg: 'bg-amber-50', icon: '⚡' },
-    { label: '已完成', value: stats.completed, color: 'text-emerald-600', bg: 'bg-emerald-50', icon: '✅' },
-    { label: '失败', value: stats.failed, color: 'text-red-600', bg: 'bg-red-50', icon: '❌' },
+    { label: '总任务', value: taskStats.total, color: 'text-brand-600', bg: 'bg-brand-50', icon: '📊' },
+    { label: '处理中', value: taskStats.processing, color: 'text-amber-600', bg: 'bg-amber-50', icon: '⚡' },
+    { label: '已完成', value: taskStats.completed, color: 'text-emerald-600', bg: 'bg-emerald-50', icon: '✅' },
+    { label: '失败', value: taskStats.failed, color: 'text-red-600', bg: 'bg-red-50', icon: '❌' },
   ];
 
   return (
@@ -62,7 +70,10 @@ export default function DashboardPage() {
       <TaskEditModal
         open={showModal}
         onClose={() => setShowModal(false)}
-        onSubmit={createTask}
+        onSuccess={(taskId, videoUrl) => {
+          console.log('任务创建成功:', taskId, videoUrl);
+          setShowModal(false);
+        }}
       />
     </>
   );
